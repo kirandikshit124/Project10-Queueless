@@ -3,6 +3,7 @@ const cors = require("cors");
 const dotenv = require('dotenv');
 const { default: mongoose } = require('mongoose');
 dotenv.config();
+const authRouter = require('./routes/authRouter')
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use("/api", authRouter)
 app.get("/", (req, res) => {
     res.json({
         message: "QueueLess API is running"
