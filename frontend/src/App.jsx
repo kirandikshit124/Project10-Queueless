@@ -1,12 +1,27 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+
 function App() {
   return (
-    <>
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <h1 className="text-4xl font-bold text-red-900">
-          QueueLess
-        </h1>
-      </div>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/login"
+          element={<Login />} />
+        <Route
+          path="/register"
+          element={<Register />} />
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />} />
+        <Route
+          path="/reset-password/:token"
+          element={<ResetPassword />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 export default App
