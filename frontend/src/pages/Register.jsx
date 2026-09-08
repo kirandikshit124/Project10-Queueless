@@ -38,7 +38,7 @@ const Register = () => {
                 password: formData.password,
             })
             if (data.success) {
-                navigate("/");
+                navigate("/login");
             } else {
                 setError(data.message);
             }
