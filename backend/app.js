@@ -7,6 +7,7 @@ const authRouter = require('./routes/authRouter')
 const businessRouter = require("./routes/businessRouter");
 const serviceRouter = require("./routes/serviceRouter");
 const appointmentRouter = require("./routes/appointmentRouter")
+const queueRouter = require("./routes/queueRouter")
 
 const app = express();
 
@@ -19,6 +20,8 @@ app.use("/api", authRouter)
 app.use("/api/businesses", businessRouter)
 app.use("/api/services", serviceRouter)
 app.use("/api/appointments", appointmentRouter)
+app.use("/api/queue", queueRouter)
+
 app.get("/", (req, res) => {
     res.json({
         message: "QueueLess API is running"
