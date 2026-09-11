@@ -6,6 +6,7 @@ dotenv.config();
 const authRouter = require('./routes/authRouter')
 const businessRouter = require("./routes/businessRouter");
 const serviceRouter = require("./routes/serviceRouter");
+const appointmentRouter = require("./routes/appointmentRouter")
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use(express.json());
 app.use("/api", authRouter)
 app.use("/api/businesses", businessRouter)
 app.use("/api/services", serviceRouter)
+app.use("/api/appointments", appointmentRouter)
 app.get("/", (req, res) => {
     res.json({
         message: "QueueLess API is running"
