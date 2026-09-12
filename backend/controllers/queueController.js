@@ -3,6 +3,7 @@ const Appointment = require("../models/Appointment");
 const Business = require("../models/Business");
 const Service = require("../models/Service");
 const { getActiveQueue, getPeopleAhead, calculateEstimatedWait } = require("../utils/queueAlgorithm");
+const getNextQueueNumber = require("../utils/queueNumber");
 
 exports.checkIn = async (req, res) => {
     const {appointmentId} = req.body;
@@ -45,16 +46,9 @@ exports.checkIn = async (req, res) => {
                 queueEntry: existingEntry,
             })
         }
-        const activeQueue = await QueueEntry.find({            // Get current queue
-                business: appointment.business,
-                status: {
-                    $in: ["waiting", "serving"],
-                },
-            }).sort({
-                joinedAt: 1,
-            })
+        const activeQueue = await getActiveQueue(businessId)
         const lastQueueEntry =await QueueEntry.findOne({business: appointment.business,}).sort({queueNumber: -1})            // Generate queue number
-        const queueNumber = lastQueueEntry ? lastQueueEntry.queueNumber + 1 : 1;
+        const queueNumber = await getNextQueueNumber(businessId)
         const peopleAhead = activeQueue.filter((entry) => entry.status === "waiting").length        // Count waiting customers
         const estimatedWait = calculateEstimatedWait( peopleAhead, appointment.service.duration)
         const queueEntry = await QueueEntry.create({
