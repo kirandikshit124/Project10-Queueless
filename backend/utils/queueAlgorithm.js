@@ -3,15 +3,18 @@ const QueueEntry = require("../models/QueueEntry");
 const getActiveQueue = async (businessId) => {
     return await QueueEntry.find({
         business: businessId,
+        date: date,
         status: {
             $in: ["waiting", "serving"],
         },
     })
         .populate("customer", "name email")
         .populate("service", "name duration")
+        .populate("appointment", "date startTime")
         .sort({
             joinedAt: 1,
         });
+    return queue;
 }
 
 const getPeopleAhead = (queue, queueEntryId) => {

@@ -22,6 +22,10 @@ const queueEntrySchema = new mongoose.Schema(
             ref: "Appointment",
             default: null,
         },
+        date: {
+            type: String,
+            required: true,
+        },
         queueNumber: {
             type: Number,
             required: true,
@@ -59,7 +63,7 @@ const queueEntrySchema = new mongoose.Schema(
     }
 );
 
-queueEntrySchema.index({ business: 1, status: 1, joinedAt: 1 })  // Find active queue quickly
+queueEntrySchema.index({ business: 1, date: 1, status: 1, joinedAt: 1 })  // Find active queue quickly
 queueEntrySchema.index({ customer: 1, business: 1, status: 1 })  // Find customer's queue entry
 
 module.exports = mongoose.model("QueueEntry", queueEntrySchema )

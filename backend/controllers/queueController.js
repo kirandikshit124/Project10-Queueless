@@ -48,7 +48,7 @@ exports.checkIn = async (req, res) => {
         }
         const activeQueue = await getActiveQueue(businessId)
         const lastQueueEntry =await QueueEntry.findOne({business: appointment.business,}).sort({queueNumber: -1})            // Generate queue number
-        const queueNumber = await getNextQueueNumber(businessId)
+        const queueNumber = await getNextQueueNumber(businessId, appointment.date)
         const peopleAhead = activeQueue.filter((entry) => entry.status === "waiting").length        // Count waiting customers
         const estimatedWait = calculateEstimatedWait( peopleAhead, appointment.service.duration)
         const queueEntry = await QueueEntry.create({
@@ -56,7 +56,10 @@ exports.checkIn = async (req, res) => {
                 business: appointment.business,
                 service: appointment.service._id,
                 appointment: appointment._id,
+                date: appointment.date,
                 queueNumber,
+                status: "waiting",
+                joinedAt: new Date(),
                 estimatedWait,
             })
         appointment.status = "checked-in";            // Update appointment
