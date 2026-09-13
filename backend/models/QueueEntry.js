@@ -47,10 +47,15 @@ const queueEntrySchema = new mongoose.Schema(
         },
         calledAt: {
             type: Date,
-            default: null,
+        },
+        startedAt: {
+            type: Date,
         },
         completedAt: {
             type: Date,
+        },
+        actualServiceDuration: {
+            type: Number,
             default: null,
         },
         estimatedWait: {

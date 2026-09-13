@@ -1,6 +1,6 @@
 const QueueEntry = require("../models/QueueEntry");
 
-const getActiveQueue = async (businessId) => {
+const getActiveQueue = async (businessId, date) => {
     return await QueueEntry.find({
         business: businessId,
         date: date,
@@ -14,7 +14,6 @@ const getActiveQueue = async (businessId) => {
         .sort({
             joinedAt: 1,
         });
-    return queue;
 }
 
 const getPeopleAhead = (queue, queueEntryId) => {

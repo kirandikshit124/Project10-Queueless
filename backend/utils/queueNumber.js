@@ -1,6 +1,6 @@
 const QueueCounter = require("../models/QueueCounter");
 
-const getNextQueueNumber = async (businessId) => {
+const getNextQueueNumber = async (businessId, date) => {
     const counter = await QueueCounter.findOneAndUpdate(
         { 
             business: businessId,

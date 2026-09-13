@@ -4,6 +4,7 @@ const Business = require("../models/Business");
 const Service = require("../models/Service");
 const { getActiveQueue, getPeopleAhead, calculateEstimatedWait } = require("../utils/queueAlgorithm");
 const getNextQueueNumber = require("../utils/queueNumber");
+const { getAverageServiceTime } = require("../utils/serviceTime");
 
 exports.checkIn = async (req, res) => {
     const {appointmentId} = req.body;
@@ -46,11 +47,17 @@ exports.checkIn = async (req, res) => {
                 queueEntry: existingEntry,
             })
         }
-        const activeQueue = await getActiveQueue(businessId)
+        const businessId = appointment.business;
+        const activeQueue = await getActiveQueue(businessId, appointment.date)
         const lastQueueEntry =await QueueEntry.findOne({business: appointment.business,}).sort({queueNumber: -1})            // Generate queue number
         const queueNumber = await getNextQueueNumber(businessId, appointment.date)
         const peopleAhead = activeQueue.filter((entry) => entry.status === "waiting").length        // Count waiting customers
-        const estimatedWait = calculateEstimatedWait( peopleAhead, appointment.service.duration)
+        const historicalAverage = await getAverageServiceTime(
+            businessId,
+            appointment.service._id
+        )
+        const averageServiceTime = historicalAverage || appointment.service.duration;
+        const estimatedWait = calculateEstimatedWait(peopleAhead, averageServiceTime)
         const queueEntry = await QueueEntry.create({
                 customer: req.user._id,
                 business: appointment.business,
@@ -199,8 +206,10 @@ exports.callNextCustomer = async (req, res) => {
                 message: "No customers waiting in the queue",
             })
         }
+        const now = new Date();
         nextCustomer.status = "serving";
-        nextCustomer.calledAt = new Date();
+        nextCustomer.calledAt = now;
+        nextCustomer.startedAt = now;
         nextCustomer.estimatedWait = 0;
         await nextCustomer.save();
         if (nextCustomer.appointment) {             // Update appointment
@@ -247,8 +256,12 @@ exports.completeCustomer = async (req, res) => {
                 message: "Only a serving customer can be completed",
             })
         }
+        const completedAt = new Date()
         queueEntry.status = "completed";
-        queueEntry.completedAt = new Date();
+        queueEntry.completedAt = completedAt;
+        if (queueEntry.startedAt) {
+            queueEntry.actualServiceDuration = Math.ceil((completedAt - queueEntry.startedAt) / (1000 * 60))
+        }
         await queueEntry.save();
         if (queueEntry.appointment) {
             await Appointment.findByIdAndUpdate(
