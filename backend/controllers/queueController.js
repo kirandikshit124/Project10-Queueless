@@ -2,9 +2,8 @@ const QueueEntry = require("../models/QueueEntry");
 const Appointment = require("../models/Appointment");
 const Business = require("../models/Business");
 const Service = require("../models/Service");
-const { getActiveQueue, getPeopleAhead, calculateEstimatedWait } = require("../utils/queueAlgorithm");
+const { getActiveQueue, calculateEstimatedWait, updateQueueEstimates } = require("../utils/queueAlgorithm");
 const getNextQueueNumber = require("../utils/queueNumber");
-const { getAverageServiceTime } = require("../utils/serviceTime");
 
 exports.checkIn = async (req, res) => {
     const {appointmentId} = req.body;
@@ -49,15 +48,7 @@ exports.checkIn = async (req, res) => {
         }
         const businessId = appointment.business;
         const activeQueue = await getActiveQueue(businessId, appointment.date)
-        const lastQueueEntry =await QueueEntry.findOne({business: appointment.business,}).sort({queueNumber: -1})            // Generate queue number
         const queueNumber = await getNextQueueNumber(businessId, appointment.date)
-        const peopleAhead = activeQueue.filter((entry) => entry.status === "waiting").length        // Count waiting customers
-        const historicalAverage = await getAverageServiceTime(
-            businessId,
-            appointment.service._id
-        )
-        const averageServiceTime = historicalAverage || appointment.service.duration;
-        const estimatedWait = calculateEstimatedWait(peopleAhead, averageServiceTime)
         const queueEntry = await QueueEntry.create({
                 customer: req.user._id,
                 business: appointment.business,
@@ -67,8 +58,22 @@ exports.checkIn = async (req, res) => {
                 queueNumber,
                 status: "waiting",
                 joinedAt: new Date(),
-                estimatedWait,
             })
+        const updatedQueue = await getActiveQueue(
+            businessId,
+            appointment.date
+        );
+        const estimatedWait = await calculateEstimatedWait(
+            updatedQueue,
+            queueEntry
+        );
+        queueEntry.estimatedWait = estimatedWait;
+        await queueEntry.save();
+        const peopleAhead = updatedQueue.filter(
+            (entry) =>
+                entry.status === "waiting" &&
+                entry.joinedAt < queueEntry.joinedAt
+        ).length;
         appointment.status = "checked-in";            // Update appointment
         await appointment.save()
         const populatedEntry = await QueueEntry.findById(queueEntry._id).populate("customer", "name email").populate("business", "name").populate("service", "name duration");
@@ -120,17 +125,7 @@ exports.getMyQueuePosition = async (req, res) => {
         })
     }
     try {
-        const queue = await QueueEntry.find({
-                business: businessId,
-                status: {
-                    $in: ["waiting", "serving"],
-                },
-            }).populate(
-                    "service",
-                    "name duration"
-                ).sort({
-                    joinedAt: 1,
-                })
+        const queue = await getActiveQueue(businessId, req.query.date)
         const myEntry = queue.find((entry) => entry.customer.toString() === req.user._id.toString())
         if (!myEntry) {
             return res.status(404).json({
@@ -138,9 +133,12 @@ exports.getMyQueuePosition = async (req, res) => {
                 message: "You are not currently in the queue",
             })
         }
-        const peopleAhead = getPeopleAhead(queue,myEntry._id)
-        const averageServiceTime = myEntry.service.duration;
-        const estimatedWait = calculateEstimatedWait(peopleAhead, averageServiceTime)
+        const peopleAhead = queue.filter(
+            (entry) =>
+                entry.status === "waiting" &&
+                entry.joinedAt < myEntry.joinedAt
+        ).length;
+        const estimatedWait = await calculateEstimatedWait( queue, myEntry );
         return res.status(200).json({
             success: true,
             queueEntry: {
@@ -212,6 +210,7 @@ exports.callNextCustomer = async (req, res) => {
         nextCustomer.startedAt = now;
         nextCustomer.estimatedWait = 0;
         await nextCustomer.save();
+        await updateQueueEstimates( businessId, nextCustomer.date );
         if (nextCustomer.appointment) {             // Update appointment
             await Appointment.findByIdAndUpdate(
                 nextCustomer.appointment,
@@ -263,6 +262,7 @@ exports.completeCustomer = async (req, res) => {
             queueEntry.actualServiceDuration = Math.ceil((completedAt - queueEntry.startedAt) / (1000 * 60))
         }
         await queueEntry.save();
+        await updateQueueEstimates(queueEntry.business.toString(), queueEntry.date);
         if (queueEntry.appointment) {
             await Appointment.findByIdAndUpdate(
                 queueEntry.appointment,
